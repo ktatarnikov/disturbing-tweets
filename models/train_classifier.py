@@ -1,4 +1,4 @@
-from typing import Dict, Any, Sequence
+from typing import Dict, Any, Sequence, Tuple, List
 import sys
 from sqlalchemy import create_engine
 
@@ -21,7 +21,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
 from sklearn.ensemble import GradientBoostingClassifier
 
-def load_data(database_filepath: str, table_name: str) -> [pd.DataFrame, pd.DataFrame, Sequence[str]]:
+def load_data(database_filepath: str, table_name: str) -> Tuple[pd.DataFrame, pd.DataFrame, Sequence[str]]:
     '''
     Loads messages and categories and merge them together
     so result contains category labels for each message.
