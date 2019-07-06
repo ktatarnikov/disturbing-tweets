@@ -46,13 +46,13 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
 
     # encode the column
     for column in categories:
-        categories[column] = categories[column].apply(lambda x: int(x.split('-')[1]))
+        categories[column] = categories[column].apply(lambda x: x.split('-')[1])
+        categories[column] = pd.to_numeric(categories[column])
 
     # replace with new categories
     df.drop('categories', axis= 1, inplace =True)
     df = pd.concat([df, categories], axis=1, join_axes=[df.index])
-
-    return df.dropna().drop_duplicates()
+    return df.drop_duplicates()
 
 
 def save_data(df: pd.DataFrame, database_filename: str) -> None:
@@ -81,7 +81,6 @@ def main() -> None:
 
         print('Cleaning data...')
         df = clean_data(df)
-
         print('Saving data...\n    DATABASE: {}'.format(database_filepath))
         save_data(df, database_filepath)
 

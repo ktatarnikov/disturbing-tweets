@@ -8,18 +8,21 @@ import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+import numpy as np
+import pickle
 
 nltk.download(['punkt', 'wordnet','stopwords'])
 
-from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-
+from sklearn.multioutput import MultiOutputClassifier
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import classification_report
+stop_words = stopwords.words("english")
 
 def load_data(database_filepath: str, table_name: str) -> Tuple[pd.DataFrame, pd.DataFrame, Sequence[str]]:
     '''
@@ -40,10 +43,9 @@ def load_data(database_filepath: str, table_name: str) -> Tuple[pd.DataFrame, pd
         - id, message, original, genre, categories
     '''
     engine = create_engine(f'sqlite:///{database_filepath}', echo=False)
-    engine.execute("SELECT * FROM disturbing_tweets").fetchall()
     df = pd.read_sql_table(table_name, engine)
     X = df.loc[:, 'message']
-    y = df.iloc[:, 4:]
+    y = df.iloc[:, 5:]
     category_names = list(y.columns)
     return X, y, category_names
 
@@ -67,16 +69,18 @@ def tokenize(text: str) -> Sequence[str]:
     lemmatizer = WordNetLemmatizer()
     tokenized = word_tokenize(text)
     clean_tokens = []
-    for tok in tokenized:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
+    for token in tokenized:
+        if token in stop_words:
+            continue
+        clean_token = lemmatizer.lemmatize(token).lower().strip()
+        clean_tokens.append(clean_token)
 
     return clean_tokens
 
 
 def build_model() -> GridSearchCV:
     '''
-    Builds mdoel pipeline
+    Builds model pipeline
     - Tokenize text into words
     - Lemmatize the tokens into stem
     - resulting tokens lowercased and trimmed
@@ -92,30 +96,22 @@ def build_model() -> GridSearchCV:
         a list of tokens
     '''
     pipeline = Pipeline([
-        ('features', FeatureUnion([
-            ('text_pipeline', Pipeline([
-                ('vect', CountVectorizer(tokenizer=tokenize)),
-                ('tfidf', TfidfTransformer())
-            ]))
-        ])),
-        ('clf', GradientBoostingClassifier())
+        ('vect', CountVectorizer(tokenizer=tokenize)),
+        ('tfidf', TfidfTransformer()),
+        ('clf', MultiOutputClassifier(RandomForestClassifier(random_state = 42)))
     ])
 
+
     parameters = {
-        # 'features__text_pipeline__vect__ngram_range': ((1, 1), (1, 2)),
-        # 'features__text_pipeline__vect__max_df': (0.5, 0.75, 1.0),
-        # 'features__text_pipeline__vect__max_features': (None, 5000, 10000),
-        # 'features__text_pipeline__tfidf__use_idf': (True, False),
-        # 'clf__n_estimators': [50, 100, 200],
-        # 'clf__min_samples_split': [2, 3, 4],
-        # 'features__transformer_weights': (
-        #     {'text_pipeline': 1, 'starting_verb': 0.5},
-        #     {'text_pipeline': 0.5, 'starting_verb': 1},
-        #     {'text_pipeline': 0.8, 'starting_verb': 1},
-        # )
+        # 'vect__ngram_range': ((1, 1), (1, 2)),
+        # 'vect__max_features': (None, 5000, 10000),
+        # 'tfidf__use_idf': (True, False),
+        # 'clf__estimator__n_estimators': [10, 20, 50, 100, 200],
+        'clf__estimator__n_estimators': [50],
+        # 'clf__estimator__min_samples_split': [2, 3, 4],
     }
 
-    cv = GridSearchCV(pipeline, param_grid=parameters)
+    cv = GridSearchCV(pipeline, param_grid=parameters) #, n_jobs=-1)
     return cv
 
 def evaluate_model(model: GridSearchCV, X_test: pd.DataFrame, Y_test: pd.DataFrame, category_names: Sequence[str]) -> None:
@@ -134,18 +130,16 @@ def evaluate_model(model: GridSearchCV, X_test: pd.DataFrame, Y_test: pd.DataFra
         the list of category names
     '''
 
-    y_pred = model.predict(X_test)
-    labels = np.unique(y_pred)
-    confusion_mat = confusion_matrix(y_test, y_pred, labels=labels)
-    accuracy = (y_pred == y_test).mean()
+    Y_pred = model.predict(X_test)
+    labels = np.unique(Y_pred)
+    accuracy = (Y_pred == Y_test).mean()
 
-    print("Labels:", labels)
-    print("Confusion Matrix:\n", confusion_mat)
-    print("Accuracy:", accuracy)
-    print("\nBest Parameters:", cv.best_params_)
+    print("Labels: ", labels)
+    print("Accuracy: ", accuracy)
+    print("Best Parameters: ", model.best_params_)
 
-    for idx, col in enumerate(category_names):
-        print(col, classification_report(Y_test.iloc[:,idx], y_pred[:,idx]))
+    for i, name in enumerate(category_names):
+        print(name, classification_report(Y_test.iloc[:,i], Y_pred[:,i]))
 
 
 def save_model(model: GridSearchCV, model_filepath: str) -> None:

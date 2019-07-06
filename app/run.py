@@ -4,13 +4,13 @@ import pandas as pd
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-
+from nltk.corpus import stopwords
 from flask import Flask
 from flask import render_template, request, jsonify
 from plotly.graph_objs import Bar
 from sklearn.externals import joblib
 from sqlalchemy import create_engine
-
+stop_words = stopwords.words("english")
 
 app = Flask(__name__)
 
@@ -19,18 +19,20 @@ def tokenize(text):
     lemmatizer = WordNetLemmatizer()
 
     clean_tokens = []
-    for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
+    for token in tokens:
+        if token in stop_words:
+            continue
+        clean_tok = lemmatizer.lemmatize(token).lower().strip()
         clean_tokens.append(clean_tok)
 
     return clean_tokens
 
 # load data
-engine = create_engine('sqlite:///../data/DisasterResponse.db')
+engine = create_engine('sqlite:///data/DisasterResponse.db')
 df = pd.read_sql_table('disturbing_tweets', engine)
 
 # load model
-model = joblib.load("../models/classifier.pkl")
+model = joblib.load("classifier.pkl")
 
 # index webpage displays cool visuals and receives user input text for model
 @app.route('/')
@@ -81,7 +83,7 @@ def go():
 
     # use model to predict classification for query
     classification_labels = model.predict([query])[0]
-    classification_results = dict(zip(df.columns[4:], classification_labels))
+    classification_results = dict(zip(df.columns[5:], classification_labels))
 
     # This will render the go.html Please see that file.
     return render_template(
