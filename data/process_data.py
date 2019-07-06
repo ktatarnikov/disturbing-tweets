@@ -31,13 +31,28 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     Parameters
     ----------
     df : pd.DataFrame
-        merged data
+        cleaned data
     Returns
     -------
     pd.DataFrame
         that contain only full records
     '''
-    return df.dropna()
+    categories = df['categories'].str.split(n = 36, pat = ';', expand = True)
+
+    # cleanup column name
+    row = categories.iloc[0,:]
+    category_colnames = [val.split('-')[0] for val in row.values]
+    categories.columns = category_colnames
+
+    # encode the column
+    for column in categories:
+        categories[column] = categories[column].apply(lambda x: int(x.split('-')[1]))
+
+    # replace with new categories
+    df.drop('categories', axis= 1, inplace =True)
+    df = pd.concat([df, categories], axis=1, join_axes=[df.index])
+
+    return df.dropna().drop_duplicates()
 
 
 def save_data(df: pd.DataFrame, database_filename: str) -> None:
