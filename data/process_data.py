@@ -1,19 +1,61 @@
 import sys
+import pandas as pd
+import sqlite3
+
+def load_data(messages_filepath: str, categories_filepath: str) -> pd.DataFrame:
+    '''
+    Loads messages and categories and merge them together
+    so result contains category labels for each message.
+
+    Parameters
+    ----------
+    messages_filepath : str
+        messages file path
+    categories_filepath : str
+        categories file path
+
+    Returns
+    -------
+    pd.DataFrame
+        with the following columns
+        - id, message, original, genre, categories
+    '''
+    messages = pd.read_csv(messages_filepath)
+    categories = pd.read_csv(categories_filepath)
+    return pd.merge(messages, categories, on=['id'])
+
+def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+    '''
+    Removes the records with no data.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        merged data
+    Returns
+    -------
+    pd.DataFrame
+        that contain only full records
+    '''
+    return df.dropna()
 
 
-def load_data(messages_filepath, categories_filepath):
-    pass
+def save_data(df: pd.DataFrame, database_filename: str) -> None:
+    '''
+    Saves dataframe to sqlite database so results contain.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        records to save
+    database_filename : str
+        database file name
+    '''
+    with sqlite3.connect(database_filename) as conn:
+        df.to_sql("disturbing_tweets", conn, if_exists='replace')
+        conn.commit()
 
-def clean_data(df):
-    pass
-
-
-def save_data(df, database_filename):
-    pass
-
-
-def main():
+def main() -> None:
     if len(sys.argv) == 4:
 
         messages_filepath, categories_filepath, database_filepath = sys.argv[1:]
