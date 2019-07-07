@@ -103,15 +103,11 @@ def build_model() -> GridSearchCV:
 
 
     parameters = {
-        # 'vect__ngram_range': ((1, 1), (1, 2)),
-        # 'vect__max_features': (None, 5000, 10000),
-        # 'tfidf__use_idf': (True, False),
-        # 'clf__estimator__n_estimators': [10, 20, 50, 100, 200],
-        'clf__estimator__n_estimators': [50],
-        # 'clf__estimator__min_samples_split': [2, 3, 4],
+        'clf__estimator__n_estimators': [20, 50],
+        'clf__estimator__min_samples_split': [2],
     }
 
-    cv = GridSearchCV(pipeline, param_grid=parameters) #, n_jobs=-1)
+    cv = GridSearchCV(pipeline, param_grid = parameters, n_jobs=-1)
     return cv
 
 def evaluate_model(model: GridSearchCV, X_test: pd.DataFrame, Y_test: pd.DataFrame, category_names: Sequence[str]) -> None:
