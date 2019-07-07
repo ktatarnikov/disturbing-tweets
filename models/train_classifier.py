@@ -103,7 +103,7 @@ def build_model() -> GridSearchCV:
 
 
     parameters = {
-        'clf__estimator__n_estimators': [20, 50],
+        'clf__estimator__n_estimators': [20, 50, 100],
         'clf__estimator__min_samples_split': [2],
     }
 
